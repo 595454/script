@@ -123,7 +123,7 @@
       ? document.querySelector(operation.detailRootSelector)
       : (
           document.querySelector(
-            "app-demo-account-overview"
+            "app-bank-account-overview"
           ) ||
           document
         );
