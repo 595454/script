@@ -37,7 +37,7 @@
   }
 
   const SCRIPT_VERSION =
-    "1.5.4";
+    "1.5.5";
 
   const ROOT_MARKER_SELECTOR =
     "#cdc-web-body";
@@ -2124,6 +2124,356 @@
     return container;
   }
 
+  function removeCloneIdentifiers(
+    root
+  ) {
+    if (!(root instanceof Element)) {
+      return;
+    }
+
+    root.removeAttribute("id");
+
+    root
+      .querySelectorAll("[id]")
+      .forEach((element) => {
+        element.removeAttribute("id");
+      });
+  }
+
+  function setElementText(
+    element,
+    value
+  ) {
+    if (element) {
+      element.textContent =
+        String(value ?? "");
+    }
+  }
+
+  function createNativeDetailRowClone(
+    templateRow,
+    label,
+    value
+  ) {
+    if (!templateRow) {
+      return null;
+    }
+
+    const row =
+      templateRow.cloneNode(true);
+
+    removeCloneIdentifiers(row);
+
+    const cells =
+      row.querySelectorAll("td");
+
+    if (cells.length < 2) {
+      return null;
+    }
+
+    const labelText =
+      cells[0].querySelector("p") ||
+      cells[0];
+
+    const valueText =
+      cells[1].querySelector("p") ||
+      cells[1];
+
+    setElementText(
+      labelText,
+      label
+    );
+
+    setElementText(
+      valueText,
+      value
+    );
+
+    /*
+     * Keep the app's native column widths and padding. Only allow long
+     * addresses to wrap inside the native value column.
+     */
+    cells[1].style.setProperty(
+      "min-width",
+      "0"
+    );
+
+    valueText.style.setProperty(
+      "max-width",
+      "100%"
+    );
+
+    valueText.style.setProperty(
+      "overflow-wrap",
+      "anywhere"
+    );
+
+    valueText.style.setProperty(
+      "word-break",
+      String(label)
+        .toLowerCase()
+        .includes("from") ||
+      String(label)
+        .toLowerCase()
+        .includes("to")
+        ? "break-all"
+        : "break-word"
+    );
+
+    return row;
+  }
+
+  function populateNativeDetailTemplate(
+    detailContainer,
+    transaction,
+    config
+  ) {
+    const title =
+      detailContainer.querySelector(
+        '[class*="TransactionDetail_headerTitle__"]'
+      );
+
+    const headerBlock =
+      detailContainer.querySelector(
+        '[class*="TransactionDetail_headerBlock__"]'
+      );
+
+    const status =
+      headerBlock?.querySelector(
+        'p[data-variant="body1"]'
+      );
+
+    const date =
+      headerBlock?.querySelector(
+        'p[data-variant="body2"]'
+      );
+
+    setElementText(
+      title,
+      transaction.title
+    );
+
+    setElementText(
+      status,
+      transaction.status
+    );
+
+    if (status) {
+      status.style.setProperty(
+        "color",
+        statusColor(
+          transaction.status
+        )
+      );
+    }
+
+    setElementText(
+      date,
+      transaction.detailDateTime
+    );
+
+    const amount =
+      detailContainer.querySelector(
+        'p[data-variant="heading1"]'
+      );
+
+    const heading3 =
+      [
+        ...detailContainer.querySelectorAll(
+          'p[data-variant="heading3"]'
+        )
+      ];
+
+    setElementText(
+      heading3[0],
+      transactionSign(
+        transaction.direction
+      )
+    );
+
+    setElementText(
+      amount,
+      formatDecimal(
+        transaction.tokenAmount,
+        config.locale,
+        config.tokenDecimals
+      )
+    );
+
+    setElementText(
+      heading3.at(-1),
+      getAssetSymbol(
+        transaction,
+        config
+      )
+    );
+
+    const approximate =
+      detailContainer.querySelector(
+        '[class*="TransactionDetail_bannerSubText__"]'
+      );
+
+    const approximateText =
+      String(
+        transaction.detailApprox
+      ).trim() ||
+      (
+        String(
+          transaction.nativeAmount
+        ).trim()
+          ? `≈ ${config.currencyPrefix}${formatDecimal(
+              transaction.nativeAmount,
+              config.locale,
+              config.nativeDecimals
+            )} ${config.nativeSymbol}`
+          : ""
+      );
+
+    setElementText(
+      approximate,
+      approximateText
+    );
+
+    const tbody =
+      detailContainer.querySelector(
+        "tbody"
+      );
+
+    if (!tbody) {
+      return false;
+    }
+
+    const existingRows =
+      [
+        ...tbody.querySelectorAll(
+          ":scope > tr"
+        )
+      ];
+
+    const templateRow =
+      existingRows[0] ||
+      null;
+
+    const detailRows = [
+      [
+        transaction.sourceLabel ||
+          (
+            transaction.direction ===
+            "in"
+              ? "Deposit from"
+              : "Withdraw to"
+          ),
+        transaction.sourceValue
+      ],
+      [
+        "Network type",
+        transaction.network
+      ],
+      [
+        "Sender's name",
+        transaction.senderName
+      ],
+      [
+        "Wallet type",
+        transaction.walletType
+      ]
+    ].filter(
+      ([, value]) =>
+        String(value ?? "").trim()
+    );
+
+    tbody.replaceChildren();
+
+    for (
+      const [
+        label,
+        value
+      ] of detailRows
+    ) {
+      const row =
+        createNativeDetailRowClone(
+          templateRow,
+          label,
+          value
+        );
+
+      if (row) {
+        tbody.appendChild(row);
+      } else {
+        addDetailRow(
+          tbody,
+          label,
+          value
+        );
+      }
+    }
+
+    return true;
+  }
+
+  function createSideColumnFromNativeTemplate(
+    nativeDetailColumn,
+    transaction,
+    config
+  ) {
+    if (!nativeDetailColumn) {
+      return null;
+    }
+
+    const sideColumn =
+      nativeDetailColumn.cloneNode(true);
+
+    removeCloneIdentifiers(
+      sideColumn
+    );
+
+    sideColumn.removeAttribute(
+      "data-remote-demo-three-hidden-native-detail"
+    );
+
+    sideColumn.removeAttribute(
+      "data-remote-demo-three-previous-display"
+    );
+
+    sideColumn.setAttribute(
+      DETAIL_OVERLAY_ATTRIBUTE,
+      transaction.id
+    );
+
+    sideColumn.setAttribute(
+      "data-remote-demo-three-side-detail",
+      "true"
+    );
+
+    sideColumn.setAttribute(
+      "data-remote-demo-three-version",
+      SCRIPT_VERSION
+    );
+
+    sideColumn.style.removeProperty(
+      "display"
+    );
+
+    const detailContainer =
+      sideColumn.querySelector(
+        ".TransactionDetail_container__sJWWO, " +
+        '[class*="TransactionDetail_container__"]'
+      );
+
+    if (
+      !detailContainer ||
+      !populateNativeDetailTemplate(
+        detailContainer,
+        transaction,
+        config
+      )
+    ) {
+      return null;
+    }
+
+    return sideColumn;
+  }
+
   function showTransactionDetails(
     transaction,
     config,
@@ -2151,13 +2501,6 @@
       return;
     }
 
-    const nativeDetailWidth =
-      nativeDetailColumn
-        ? nativeDetailColumn
-            .getBoundingClientRect()
-            .width
-        : 0;
-
     if (nativeDetailColumn) {
       nativeDetailColumn.setAttribute(
         "data-remote-demo-three-hidden-native-detail",
@@ -2174,7 +2517,20 @@
         "none";
     }
 
+    /*
+     * Preferred real-app behavior: clone the live native detail column.
+     * This preserves the application's current grid width, breakpoints,
+     * typography, table sizing and future CSS-module class changes.
+     */
+    const nativeTemplateColumn =
+      createSideColumnFromNativeTemplate(
+        nativeDetailColumn,
+        transaction,
+        config
+      );
+
     const sideColumn =
+      nativeTemplateColumn ||
       makeElement(
         "div",
         {
@@ -2188,89 +2544,32 @@
               "true",
             "data-remote-demo-three-version":
               SCRIPT_VERSION
+          },
+          style: {
+            flex:
+              "1 1 320px",
+            minWidth:
+              "min(320px, 100%)",
+            maxWidth:
+              "100%",
+            paddingInline:
+              "var(--mantine-spacing-md, 16px)",
+            boxSizing:
+              "border-box",
+            alignSelf:
+              "flex-start"
           }
         }
       );
 
-    if (
-      nativeDetailColumn?.getAttribute(
-        "style"
-      )
-    ) {
-      sideColumn.setAttribute(
-        "style",
-        nativeDetailColumn.getAttribute(
-          "style"
+    if (!nativeTemplateColumn) {
+      sideColumn.appendChild(
+        createReplicatedDetailContent(
+          transaction,
+          config
         )
       );
-    } else {
-      Object.assign(
-        sideColumn.style,
-        {
-          flex:
-            "0 0 33.333333%",
-          width:
-            "33.333333%",
-          maxWidth:
-            "33.333333%",
-          minWidth:
-            "280px",
-          paddingInline:
-            "var(--mantine-spacing-md, 16px)",
-          boxSizing:
-            "border-box",
-          alignSelf:
-            "flex-start"
-        }
-      );
     }
-
-    sideColumn.style.display =
-      "block";
-
-    if (nativeDetailWidth > 0) {
-      const width =
-        `${Math.round(
-          nativeDetailWidth
-        )}px`;
-
-      sideColumn.style.setProperty(
-        "flex",
-        `0 0 ${width}`,
-        "important"
-      );
-
-      sideColumn.style.setProperty(
-        "width",
-        width,
-        "important"
-      );
-
-      sideColumn.style.setProperty(
-        "min-width",
-        width,
-        "important"
-      );
-
-      sideColumn.style.setProperty(
-        "max-width",
-        width,
-        "important"
-      );
-    } else {
-      sideColumn.style.setProperty(
-        "min-width",
-        "300px",
-        "important"
-      );
-    }
-
-    sideColumn.appendChild(
-      createReplicatedDetailContent(
-        transaction,
-        config
-      )
-    );
 
     if (
       nativeDetailColumn &&
