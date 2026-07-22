@@ -368,7 +368,9 @@
             borderRadius:
               "var(--mantine-radius-xs, 4px)",
             overflow: "hidden",
-            flex: "0 0 auto"
+            flex: "0 0 auto",
+            display: "grid",
+            placeItems: "center"
           }
         }
       );
@@ -390,9 +392,12 @@
               src: logoUrl
             },
             style: {
-              width: "100%",
-              height: "100%",
-              objectFit: "cover"
+              width: "24px",
+              height: "24px",
+              maxWidth: "24px",
+              maxHeight: "24px",
+              objectFit: "contain",
+              display: "block"
             }
           }
         )
@@ -405,8 +410,9 @@
             text:
               symbol.slice(0, 2),
             style: {
-              width: "100%",
-              height: "100%",
+              width: "24px",
+              height: "24px",
+              borderRadius: "50%",
               display: "grid",
               placeItems: "center",
               background:
