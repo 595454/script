@@ -3,11 +3,41 @@
 (function startRemoteDemoThree() {
   "use strict";
 
+  /*
+   * Remove stale DOM left by an older extension context before starting the
+   * current engine. This is important after an extension reload, because the
+   * old user script can no longer receive configuration messages.
+   */
+  document
+    .querySelectorAll(
+      '[data-remote-demo-three-injected-row="true"], ' +
+      '[data-remote-demo-three-day-group], ' +
+      '[data-remote-demo-three-detail-overlay]'
+    )
+    .forEach(
+      (element) =>
+        element.remove()
+    );
+
+  document
+    .querySelectorAll(
+      '[data-remote-demo-three-history-signature]'
+    )
+    .forEach(
+      (element) =>
+        element.removeAttribute(
+          "data-remote-demo-three-history-signature"
+        )
+    );
+
   if (
     globalThis.__REMOTE_DEMO_THREE__?.stop
   ) {
     globalThis.__REMOTE_DEMO_THREE__.stop();
   }
+
+  const SCRIPT_VERSION =
+    "1.5.0";
 
   const ROOT_MARKER_SELECTOR =
     "#cdc-web-body";
@@ -556,7 +586,9 @@
       "data-remote-demo-three-history":
         historyVariant,
       "data-remote-demo-three-injected-row":
-        "true"
+        "true",
+      "data-remote-demo-three-version":
+        SCRIPT_VERSION
     };
 
     if (!isAccounts) {
@@ -807,7 +839,8 @@
       const openDetails = () => {
         showTransactionDetails(
           transaction,
-          config
+          config,
+          row
         );
       };
 
@@ -1419,45 +1452,100 @@
     tbody.appendChild(row);
   }
 
+  function findNativeDetailColumn() {
+    const nativeContainer = [
+      ...document.querySelectorAll(
+        ".TransactionDetail_container__sJWWO, " +
+        '[class*="TransactionDetail_container__"]'
+      )
+    ].find(
+      (element) =>
+        !element.closest(
+          `[${DETAIL_OVERLAY_ATTRIBUTE}]`
+        )
+    );
+
+    if (!nativeContainer) {
+      return null;
+    }
+
+    return (
+      nativeContainer.closest(
+        ".mantine-Grid-col"
+      ) ||
+      nativeContainer.parentElement
+    );
+  }
+
+  function findTransactionLeftColumn(
+    clickedRow
+  ) {
+    const historyBody =
+      clickedRow?.closest(
+        '[data-testid="hub__transactionHistory__body"]'
+      );
+
+    return (
+      historyBody?.closest(
+        '[class*="_components_leftContent__"]'
+      ) ||
+      historyBody?.closest(
+        ".mantine-Grid-col"
+      ) ||
+      null
+    );
+  }
+
+  function restoreHiddenNativeDetailColumn() {
+    const hiddenColumn =
+      document.querySelector(
+        '[data-remote-demo-three-hidden-native-detail="true"]'
+      );
+
+    if (!hiddenColumn) {
+      return;
+    }
+
+    const previousDisplay =
+      hiddenColumn.getAttribute(
+        "data-remote-demo-three-previous-display"
+      );
+
+    if (
+      previousDisplay === null ||
+      previousDisplay === ""
+    ) {
+      hiddenColumn.style.removeProperty(
+        "display"
+      );
+    } else {
+      hiddenColumn.style.display =
+        previousDisplay;
+    }
+
+    hiddenColumn.removeAttribute(
+      "data-remote-demo-three-hidden-native-detail"
+    );
+
+    hiddenColumn.removeAttribute(
+      "data-remote-demo-three-previous-display"
+    );
+  }
+
   function closeTransactionDetails() {
     document
       .querySelector(
         `[${DETAIL_OVERLAY_ATTRIBUTE}]`
       )
       ?.remove();
+
+    restoreHiddenNativeDetailColumn();
   }
 
-  function showTransactionDetails(
+  function createReplicatedDetailContent(
     transaction,
     config
   ) {
-    closeTransactionDetails();
-
-    const overlay =
-      makeElement(
-        "div",
-        {
-          attributes: {
-            [DETAIL_OVERLAY_ATTRIBUTE]:
-              transaction.id,
-            role: "dialog",
-            "aria-modal": "true",
-            "aria-label":
-              `${transaction.title} details`
-          },
-          style: {
-            position: "fixed",
-            inset: "0",
-            zIndex: "2147483647",
-            overflow: "auto",
-            background:
-              "var(--mantine-color-body, #fff)",
-            color:
-              "var(--content-primary, #212529)"
-          }
-        }
-      );
-
     const container =
       makeElement(
         "div",
@@ -1465,41 +1553,10 @@
           className:
             "TransactionDetail_container__sJWWO",
           style: {
-            maxWidth: "900px",
-            margin: "0 auto",
-            padding:
-              "24px 20px 48px"
+            width: "100%"
           }
         }
       );
-
-    const backButton =
-      makeElement(
-        "button",
-        {
-          attributes: {
-            type: "button",
-            "aria-label":
-              "Close transaction details"
-          },
-          text: "← Back",
-          style: {
-            border: "0",
-            background: "transparent",
-            color:
-              "var(--mantine-primary-color-filled, #228be6)",
-            cursor: "pointer",
-            fontSize: "16px",
-            padding: "8px 0",
-            marginBottom: "16px"
-          }
-        }
-      );
-
-    backButton.addEventListener(
-      "click",
-      closeTransactionDetails
-    );
 
     const left =
       makeElement(
@@ -1534,12 +1591,7 @@
         {
           className:
             "mantine-focus-auto Text_root__Zab6T TransactionDetail_headerTitle__28v75 m_b6d8b162 mantine-Text-root",
-          text: transaction.title,
-          style: {
-            margin: "0 0 6px",
-            fontSize: "24px",
-            fontWeight: "700"
-          }
+          text: transaction.title
         }
       )
     );
@@ -1550,9 +1602,11 @@
         {
           className:
             "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant": "body1"
+          },
           text: transaction.status,
           style: {
-            margin: "0 0 6px",
             color:
               statusColor(
                 transaction.status
@@ -1568,26 +1622,34 @@
         {
           className:
             "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant": "body2"
+          },
           text:
             transaction.detailDateTime,
           style: {
-            margin: "0",
             color:
-              "var(--text-secondary, #868e96)"
+              "var(--text-secondary)"
           }
         }
       )
     );
 
-    header.appendChild(headerBlock);
-    left.appendChild(header);
+    header.appendChild(
+      headerBlock
+    );
+
+    left.appendChild(
+      header
+    );
 
     const amountBlock =
       makeElement(
         "div",
         {
           style: {
-            marginTop: "32px"
+            marginTop:
+              "calc(1.25rem * var(--mantine-scale))"
           }
         }
       );
@@ -1596,11 +1658,22 @@
       makeElement(
         "div",
         {
+          className:
+            "m_4081bf90 mantine-Group-root",
           style: {
+            "--group-gap":
+              "calc(0.125rem * var(--mantine-scale))",
+            "--group-align":
+              "baseline",
+            "--group-justify":
+              "flex-start",
+            "--group-wrap":
+              "wrap",
             display: "flex",
             alignItems: "baseline",
             flexWrap: "wrap",
-            gap: "4px"
+            gap:
+              "calc(0.125rem * var(--mantine-scale))"
           }
         }
       );
@@ -1609,15 +1682,20 @@
       makeElement(
         "p",
         {
+          className:
+            "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant":
+              "heading3",
+            dir: "ltr"
+          },
           text:
             transactionSign(
               transaction.direction
             ),
           style: {
-            margin: "0",
             color:
-              "var(--content-secondary, #868e96)",
-            fontSize: "32px"
+              "var(--content-secondary)"
           }
         }
       )
@@ -1627,15 +1705,21 @@
       makeElement(
         "p",
         {
+          className:
+            "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant":
+              "heading1",
+            dir: "ltr"
+          },
           text: formatDecimal(
             transaction.tokenAmount,
             config.locale,
             config.tokenDecimals
           ),
           style: {
-            margin: "0",
-            fontSize: "34px",
-            fontWeight: "700"
+            color:
+              "var(--content-primary)"
           }
         }
       )
@@ -1645,16 +1729,20 @@
       makeElement(
         "p",
         {
+          className:
+            "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant":
+              "heading3"
+          },
           text:
             getAssetSymbol(
               transaction,
               config
             ),
           style: {
-            margin: "0",
             color:
-              "var(--content-secondary, #868e96)",
-            fontSize: "32px"
+              "var(--content-secondary)"
           }
         }
       )
@@ -1687,30 +1775,37 @@
           {
             className:
               "mantine-focus-auto Text_root__Zab6T TransactionDetail_bannerSubText__KARHk m_b6d8b162 mantine-Text-root",
-            text: approximateText,
-            style: {
-              margin: "6px 0 0",
-              color:
-                "var(--content-secondary, #868e96)"
-            }
+            attributes: {
+              dir: "ltr"
+            },
+            text: approximateText
           }
         )
       );
     }
 
-    left.appendChild(amountBlock);
+    left.appendChild(
+      amountBlock
+    );
 
     left.appendChild(
       makeElement(
         "div",
         {
+          className:
+            "m_3eebeb36 mantine-Divider-root",
           attributes: {
+            "data-orientation":
+              "horizontal",
             role: "separator"
           },
           style: {
+            "--divider-color":
+              "var(--border-surface)",
+            marginTop:
+              "calc(1.25rem * var(--mantine-scale))",
             borderTop:
-              "1px solid var(--border-surface, #dee2e6)",
-            marginTop: "32px"
+              "1px solid var(--border-surface)"
           }
         }
       )
@@ -1723,12 +1818,59 @@
           className:
             "m_b23fa0ef mantine-Table-table",
           style: {
-            width: "100%",
-            borderCollapse:
-              "collapse"
+            "--table-horizontal-spacing":
+              "0rem",
+            "--table-vertical-spacing":
+              "calc(0.75rem * var(--mantine-scale))",
+            width: "100%"
           }
         }
       );
+
+    const thead =
+      makeElement(
+        "thead",
+        {
+          className:
+            "m_b242d975 mantine-Table-thead"
+        }
+      );
+
+    const headRow =
+      makeElement(
+        "tr",
+        {
+          className:
+            "m_4e7aa4fd mantine-Table-tr"
+        }
+      );
+
+    headRow.appendChild(
+      makeElement(
+        "th",
+        {
+          className:
+            "m_4e7aa4f3 mantine-Table-th",
+          style: {
+            width: "35%"
+          }
+        }
+      )
+    );
+
+    headRow.appendChild(
+      makeElement(
+        "th",
+        {
+          className:
+            "m_4e7aa4f3 mantine-Table-th"
+        }
+      )
+    );
+
+    thead.appendChild(
+      headRow
+    );
 
     const tbody =
       makeElement(
@@ -1769,25 +1911,150 @@
       transaction.walletType
     );
 
-    table.appendChild(tbody);
-    left.appendChild(table);
-
-    container.appendChild(backButton);
-    container.appendChild(left);
-    overlay.appendChild(container);
-
-    overlay.addEventListener(
-      "click",
-      (event) => {
-        if (event.target === overlay) {
-          closeTransactionDetails();
-        }
-      }
+    table.appendChild(
+      thead
     );
 
-    document.body.appendChild(overlay);
-    backButton.focus();
+    table.appendChild(
+      tbody
+    );
+
+    left.appendChild(
+      table
+    );
+
+    container.appendChild(
+      left
+    );
+
+    return container;
   }
+
+  function showTransactionDetails(
+    transaction,
+    config,
+    clickedRow
+  ) {
+    closeTransactionDetails();
+
+    const nativeDetailColumn =
+      findNativeDetailColumn();
+
+    const leftColumn =
+      findTransactionLeftColumn(
+        clickedRow
+      );
+
+    const gridContainer =
+      nativeDetailColumn?.parentElement ||
+      leftColumn?.parentElement;
+
+    if (!gridContainer) {
+      console.warn(
+        "[remote-demo-three] Could not locate the transaction grid for the side detail panel."
+      );
+
+      return;
+    }
+
+    if (nativeDetailColumn) {
+      nativeDetailColumn.setAttribute(
+        "data-remote-demo-three-hidden-native-detail",
+        "true"
+      );
+
+      nativeDetailColumn.setAttribute(
+        "data-remote-demo-three-previous-display",
+        nativeDetailColumn.style.display ||
+        ""
+      );
+
+      nativeDetailColumn.style.display =
+        "none";
+    }
+
+    const sideColumn =
+      makeElement(
+        "div",
+        {
+          className:
+            nativeDetailColumn?.className ||
+            "m_96bdd299 mantine-Grid-col",
+          attributes: {
+            [DETAIL_OVERLAY_ATTRIBUTE]:
+              transaction.id,
+            "data-remote-demo-three-side-detail":
+              "true",
+            "data-remote-demo-three-version":
+              SCRIPT_VERSION
+          }
+        }
+      );
+
+    if (
+      nativeDetailColumn?.getAttribute(
+        "style"
+      )
+    ) {
+      sideColumn.setAttribute(
+        "style",
+        nativeDetailColumn.getAttribute(
+          "style"
+        )
+      );
+    } else {
+      Object.assign(
+        sideColumn.style,
+        {
+          flex:
+            "0 0 33.333333%",
+          width:
+            "33.333333%",
+          maxWidth:
+            "33.333333%",
+          minWidth:
+            "280px",
+          paddingInline:
+            "var(--mantine-spacing-md, 16px)",
+          boxSizing:
+            "border-box",
+          alignSelf:
+            "flex-start"
+        }
+      );
+    }
+
+    sideColumn.style.display =
+      "block";
+
+    sideColumn.appendChild(
+      createReplicatedDetailContent(
+        transaction,
+        config
+      )
+    );
+
+    if (
+      nativeDetailColumn &&
+      nativeDetailColumn.parentElement ===
+        gridContainer
+    ) {
+      gridContainer.insertBefore(
+        sideColumn,
+        nativeDetailColumn
+      );
+    } else {
+      gridContainer.appendChild(
+        sideColumn
+      );
+    }
+
+    sideColumn.scrollIntoView({
+      block: "nearest",
+      inline: "nearest"
+    });
+  }
+
 
   function applyConfig() {
     if (
@@ -1994,6 +2261,12 @@
       "keydown",
       onKeyDown
     );
+
+    document.removeEventListener(
+      "click",
+      onDocumentClick,
+      true
+    );
   }
 
   function onVisibilityChange() {
@@ -2008,6 +2281,27 @@
   function onKeyDown(event) {
     if (
       event.key === "Escape"
+    ) {
+      closeTransactionDetails();
+    }
+  }
+
+  function onDocumentClick(event) {
+    const element =
+      event.target instanceof Element
+        ? event.target
+        : null;
+
+    const nativeRow =
+      element?.closest(
+        '[data-testid="hub__transactionHistory__row"]'
+      );
+
+    if (
+      nativeRow &&
+      !nativeRow.hasAttribute(
+        "data-remote-demo-three-injected-row"
+      )
     ) {
       closeTransactionDetails();
     }
@@ -2041,7 +2335,14 @@
     onKeyDown
   );
 
+  document.addEventListener(
+    "click",
+    onDocumentClick,
+    true
+  );
+
   globalThis.__REMOTE_DEMO_THREE__ = {
+    version: SCRIPT_VERSION,
     stop,
     refresh
   };
