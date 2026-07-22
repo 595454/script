@@ -37,7 +37,7 @@
   }
 
   const SCRIPT_VERSION =
-    "1.5.1";
+    "1.5.2";
 
   const ROOT_MARKER_SELECTOR =
     "#cdc-web-body";
@@ -391,16 +391,8 @@
               "calc(2rem * var(--mantine-scale))",
             "--avatar-radius":
               "var(--mantine-radius-xs)",
-            width:
-              "calc(2rem * var(--mantine-scale, 1))",
-            height:
-              "calc(2rem * var(--mantine-scale, 1))",
-            borderRadius:
-              "var(--mantine-radius-xs, 4px)",
             overflow: "hidden",
-            flex: "0 0 auto",
-            display: "grid",
-            placeItems: "center"
+            flex: "0 0 auto"
           }
         }
       );
@@ -633,25 +625,38 @@
         className:
           "styles_transaction__DQcby m_4081bf90 mantine-Group-root",
         attributes: rowAttributes,
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap:
-            "var(--mantine-spacing-md, 16px)",
-          cursor:
-            isAccounts
-              ? "default"
-              : "pointer",
-          minWidth: "100%",
-          paddingBlock:
-            "var(--mantine-spacing-sm, 12px)",
-          borderTop:
-            isAccounts
-              ? "1px solid transparent"
-              : "",
-          borderBottom:
-            "1px solid var(--border-surface, #dee2e6)"
-        }
+        style:
+          isAccounts
+            ? {
+                "--group-gap":
+                  "var(--mantine-spacing-md)",
+                "--group-align":
+                  "center",
+                "--group-justify":
+                  "flex-start",
+                "--group-wrap":
+                  "wrap",
+                cursor: "default",
+                minWidth: "100%",
+                paddingInline: "0",
+                marginInline: "0",
+                borderTop:
+                  "1px solid transparent",
+                borderBottom:
+                  "1px solid var(--border-surface)"
+              }
+            : {
+                "--group-gap":
+                  "var(--mantine-spacing-md)",
+                "--group-align":
+                  "center",
+                "--group-justify":
+                  "flex-start",
+                "--group-wrap":
+                  "wrap",
+                cursor: "pointer",
+                minWidth: "100%"
+              }
       }
     );
 
@@ -661,10 +666,17 @@
         className:
           "styles_transactionGroup__QWgo3 m_4081bf90 mantine-Group-root",
         style: {
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          minWidth: "0"
+          "--group-gap":
+            "calc(0.5rem * var(--mantine-scale))",
+          "--group-align":
+            "center",
+          "--group-justify":
+            "flex-start",
+          "--group-wrap":
+            "wrap",
+          minWidth: "0",
+          marginInline: "0",
+          paddingInline: "0"
         }
       }
     );
