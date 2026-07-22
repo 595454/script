@@ -381,7 +381,7 @@
       );
 
     if (logoUrl) {
-      avatar.appendChild(
+      const image =
         makeElement(
           "img",
           {
@@ -392,16 +392,47 @@
               src: logoUrl
             },
             style: {
-              width: "32px",
-              height: "32px",
-              maxWidth: "32px",
-              maxHeight: "32px",
+              width: "20px",
+              height: "20px",
+              maxWidth: "20px",
+              maxHeight: "20px",
               objectFit: "contain",
               display: "block"
             }
           }
-        )
+        );
+
+      /*
+       * Mantine's avatar image class may set width/height to 100%.
+       * Force the visible asset mark to match the smaller site icon.
+       */
+      image.style.setProperty(
+        "width",
+        "20px",
+        "important"
       );
+      image.style.setProperty(
+        "height",
+        "20px",
+        "important"
+      );
+      image.style.setProperty(
+        "max-width",
+        "20px",
+        "important"
+      );
+      image.style.setProperty(
+        "max-height",
+        "20px",
+        "important"
+      );
+      image.style.setProperty(
+        "object-fit",
+        "contain",
+        "important"
+      );
+
+      avatar.appendChild(image);
     } else {
       avatar.appendChild(
         makeElement(
@@ -410,8 +441,8 @@
             text:
               symbol.slice(0, 2),
             style: {
-              width: "32px",
-              height: "32px",
+              width: "20px",
+              height: "20px",
               borderRadius: "50%",
               display: "grid",
               placeItems: "center",
@@ -1840,6 +1871,24 @@
         applyConfig();
       }
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error || "");
+
+      if (
+        /extension context invalidated/i.test(
+          message
+        )
+      ) {
+        console.info(
+          "[remote-demo-three] Extension was reloaded. Reload this page once to attach the new extension context."
+        );
+
+        stop();
+        return;
+      }
+
       console.warn(
         "[remote-demo-three] Synchronization failed:",
         error
@@ -1851,7 +1900,7 @@
             pullConfig,
             clampPollMs(
               state.config?.pollMs ??
-              1500
+              1000
             )
           );
       }
