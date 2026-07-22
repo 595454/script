@@ -318,64 +318,235 @@
     return element;
   }
 
-  function createIcon(direction) {
-    const icon = makeElement(
-      "div",
-      {
-        attributes: {
-          "aria-hidden": "true"
-        },
-        style: {
-          width: "32px",
-          height: "32px",
-          borderRadius: "6px",
-          display: "grid",
-          placeItems: "center",
-          flex: "0 0 auto",
-          background:
-            direction === "in"
-              ? "var(--mantine-color-green-filled, #099268)"
-              : "var(--mantine-color-gray-filled, #495057)",
-          color: "#fff",
-          fontWeight: "700",
-          fontSize: "18px"
-        },
-        text:
-          direction === "in"
-            ? "↓"
-            : "↑"
-      }
+  function getAssetSymbol(
+    transaction,
+    config
+  ) {
+    return (
+      String(
+        transaction.assetSymbol ||
+        config.tokenSymbol ||
+        "DEMOC"
+      ).trim()
+    );
+  }
+
+  function getAssetLogoUrl(
+    transaction
+  ) {
+    return String(
+      transaction.assetLogoUrl ||
+      ""
+    ).trim();
+  }
+
+  function createAccountAssetLogo(
+    transaction,
+    config
+  ) {
+    const symbol =
+      getAssetSymbol(
+        transaction,
+        config
+      );
+
+    const avatar =
+      makeElement(
+        "div",
+        {
+          className:
+            "m_f85678b6 mantine-Avatar-root",
+          style: {
+            "--avatar-size":
+              "calc(2rem * var(--mantine-scale))",
+            "--avatar-radius":
+              "var(--mantine-radius-xs)",
+            width:
+              "calc(2rem * var(--mantine-scale, 1))",
+            height:
+              "calc(2rem * var(--mantine-scale, 1))",
+            borderRadius:
+              "var(--mantine-radius-xs, 4px)",
+            overflow: "hidden",
+            flex: "0 0 auto"
+          }
+        }
+      );
+
+    const logoUrl =
+      getAssetLogoUrl(
+        transaction
+      );
+
+    if (logoUrl) {
+      avatar.appendChild(
+        makeElement(
+          "img",
+          {
+            className:
+              "m_11f8ac07 mantine-Avatar-image",
+            attributes: {
+              alt: symbol,
+              src: logoUrl
+            },
+            style: {
+              width: "100%",
+              height: "100%",
+              objectFit: "cover"
+            }
+          }
+        )
+      );
+    } else {
+      avatar.appendChild(
+        makeElement(
+          "span",
+          {
+            text:
+              symbol.slice(0, 2),
+            style: {
+              width: "100%",
+              height: "100%",
+              display: "grid",
+              placeItems: "center",
+              background:
+                "var(--mantine-color-gray-2, #e9ecef)",
+              color:
+                "var(--mantine-color-dark-8, #343a40)",
+              fontSize: "11px",
+              fontWeight: "700"
+            }
+          }
+        )
+      );
+    }
+
+    return avatar;
+  }
+
+  function createNativeTransactionIcon(
+    direction
+  ) {
+    const container =
+      makeElement(
+        "div",
+        {
+          className:
+            "styles_txIconCircle__KavT9",
+          attributes: {
+            "aria-hidden": "true"
+          }
+        }
+      );
+
+    const svg =
+      document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "svg"
+      );
+
+    svg.setAttribute(
+      "xmlns",
+      "http://www.w3.org/2000/svg"
+    );
+    svg.setAttribute(
+      "fill",
+      "none"
+    );
+    svg.setAttribute(
+      "viewBox",
+      "0 0 24 24"
+    );
+    svg.setAttribute(
+      "height",
+      "16"
+    );
+    svg.setAttribute(
+      "width",
+      "16"
     );
 
-    return icon;
+    const path =
+      document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path"
+      );
+
+    path.setAttribute(
+      "fill",
+      "currentColor"
+    );
+    path.setAttribute(
+      "fill-rule",
+      "evenodd"
+    );
+    path.setAttribute(
+      "clip-rule",
+      "evenodd"
+    );
+
+    if (direction === "in") {
+      path.setAttribute(
+        "d",
+        "M4.154 14.55a.75.75 0 1 0-1.427.463 9.75 9.75 0 0 0 18.546 0 .75.75 0 0 0-1.427-.464 8.25 8.25 0 0 1-15.692 0m7.316-1.02a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 1 0-1.06-1.06l-2.22 2.22V5a.75.75 0 0 0-1.5 0v6.19L9.03 8.97a.75.75 0 0 0-1.06 1.06z"
+      );
+    } else {
+      path.setAttribute(
+        "d",
+        "M4.154 14.55a.75.75 0 1 0-1.427.463 9.75 9.75 0 0 0 18.546 0 .75.75 0 0 0-1.427-.464 8.25 8.25 0 0 1-15.692 0M11.47 4.47a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 1 1-1.06 1.06l-2.22-2.22V13a.75.75 0 0 1-1.5 0V6.81L9.03 9.03a.75.75 0 0 1-1.06-1.06z"
+      );
+    }
+
+    svg.appendChild(path);
+    container.appendChild(svg);
+
+    return container;
   }
 
   function createTransactionRow(
     transaction,
-    config
+    config,
+    historyVariant
   ) {
+    const isAccounts =
+      historyVariant === "accounts";
+
+    const rowAttributes = {
+      "data-testid":
+        "hub__transactionHistory__row",
+      [TRANSACTION_ID_ATTRIBUTE]:
+        transaction.id,
+      "data-remote-demo-three-history":
+        historyVariant
+    };
+
+    if (!isAccounts) {
+      rowAttributes.role = "button";
+      rowAttributes.tabindex = "0";
+    }
+
     const row = makeElement(
       "div",
       {
         className:
           "styles_transaction__DQcby m_4081bf90 mantine-Group-root",
-        attributes: {
-          "data-testid":
-            "hub__transactionHistory__row",
-          [TRANSACTION_ID_ATTRIBUTE]:
-            transaction.id,
-          role: "button",
-          tabindex: "0"
-        },
+        attributes: rowAttributes,
         style: {
           display: "flex",
           alignItems: "center",
           gap:
             "var(--mantine-spacing-md, 16px)",
-          cursor: "pointer",
+          cursor:
+            isAccounts
+              ? "default"
+              : "pointer",
           minWidth: "100%",
           paddingBlock:
             "var(--mantine-spacing-sm, 12px)",
+          borderTop:
+            isAccounts
+              ? "1px solid transparent"
+              : "",
           borderBottom:
             "1px solid var(--border-surface, #dee2e6)"
         }
@@ -396,22 +567,36 @@
       }
     );
 
-    left.appendChild(
-      createIcon(
-        transaction.direction
-      )
-    );
+    if (isAccounts) {
+      left.appendChild(
+        createAccountAssetLogo(
+          transaction,
+          config
+        )
+      );
+    } else {
+      left.appendChild(
+        createNativeTransactionIcon(
+          transaction.direction
+        )
+      );
+    }
 
     const information =
       makeElement(
         "div",
         {
           className:
-            "styles_transactionInformation__MiOTo m_6d731127 mantine-Stack-root",
+            isAccounts
+              ? "m_6d731127 mantine-Stack-root"
+              : "styles_transactionInformation__MiOTo m_6d731127 mantine-Stack-root",
           style: {
             display: "flex",
             flexDirection: "column",
-            gap: "2px",
+            gap:
+              isAccounts
+                ? "0"
+                : "2px",
             minWidth: "0"
           }
         }
@@ -438,27 +623,29 @@
       )
     );
 
-    information.appendChild(
-      makeElement(
-        "p",
-        {
-          className:
-            "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
-          attributes: {
-            "data-variant":
-              "caption1"
-          },
-          text: transaction.status,
-          style: {
-            margin: "0",
-            color:
-              statusColor(
-                transaction.status
-              )
+    if (!isAccounts) {
+      information.appendChild(
+        makeElement(
+          "p",
+          {
+            className:
+              "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+            attributes: {
+              "data-variant":
+                "caption1"
+            },
+            text: transaction.status,
+            style: {
+              margin: "0",
+              color:
+                statusColor(
+                  transaction.status
+                )
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    }
 
     left.appendChild(information);
 
@@ -489,6 +676,12 @@
         }
       );
 
+    const assetSymbol =
+      getAssetSymbol(
+        transaction,
+        config
+      );
+
     const tokenAmount =
       `${transactionSign(
         transaction.direction
@@ -496,7 +689,7 @@
         transaction.tokenAmount,
         config.locale,
         config.tokenDecimals
-      )}\u00A0${config.tokenSymbol}`;
+      )}\u00A0${assetSymbol}`;
 
     amountStack.appendChild(
       makeElement(
@@ -527,10 +720,15 @@
         transaction.nativeAmount
       ).trim()
     ) {
+      const nativeSign =
+        isAccounts
+          ? ""
+          : transactionSign(
+              transaction.direction
+            );
+
       const nativeAmount =
-        `${transactionSign(
-          transaction.direction
-        )}${config.currencyPrefix}${formatDecimal(
+        `${nativeSign}${config.currencyPrefix}${formatDecimal(
           transaction.nativeAmount,
           config.locale,
           config.nativeDecimals
@@ -546,7 +744,8 @@
               "data-variant":
                 "caption1",
               "data-testid":
-                "hub__transactionHistory__nativeAmount"
+                "hub__transactionHistory__nativeAmount",
+              dir: "ltr"
             },
             text: nativeAmount,
             style: {
@@ -565,35 +764,74 @@
     row.appendChild(left);
     row.appendChild(right);
 
-    const openDetails = () => {
-      showTransactionDetails(
-        transaction,
-        config
+    if (!isAccounts) {
+      const openDetails = () => {
+        showTransactionDetails(
+          transaction,
+          config
+        );
+      };
+
+      row.addEventListener(
+        "click",
+        openDetails
       );
-    };
 
-    row.addEventListener(
-      "click",
-      openDetails
-    );
-
-    row.addEventListener(
-      "keydown",
-      (event) => {
-        if (
-          event.key === "Enter" ||
-          event.key === " "
-        ) {
-          event.preventDefault();
-          openDetails();
+      row.addEventListener(
+        "keydown",
+        (event) => {
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
+            openDetails();
+          }
         }
-      }
-    );
+      );
+    }
 
     return row;
   }
 
-  function createDayGroup(
+  function createAccountsHistoryBlock(
+    transactions,
+    config
+  ) {
+    const rows = makeElement(
+      "div",
+      {
+        className:
+          "m_6d731127 mantine-Stack-root",
+        attributes: {
+          [DAY_GROUP_ATTRIBUTE]:
+            "accounts"
+        },
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          gap: "0"
+        }
+      }
+    );
+
+    for (
+      const transaction of
+      transactions
+    ) {
+      rows.appendChild(
+        createTransactionRow(
+          transaction,
+          config,
+          "accounts"
+        )
+      );
+    }
+
+    return rows;
+  }
+
+  function createTransactionsDayGroup(
     dateGroup,
     transactions,
     config
@@ -658,7 +896,8 @@
       rows.appendChild(
         createTransactionRow(
           transaction,
-          config
+          config,
+          "transactions"
         )
       );
     }
@@ -749,10 +988,6 @@
       "transactions"
     );
 
-    /*
-     * Fallback for existing deployments that still provide only the old
-     * transactionBodySelector field.
-     */
     if (
       roots.size === 0 &&
       config.transactionBodySelector
@@ -771,9 +1006,71 @@
     return roots;
   }
 
+  function inferHistoryVariant(
+    root,
+    historyNames,
+    rootIndex,
+    rootCount
+  ) {
+    if (historyNames.size === 1) {
+      return [
+        ...historyNames
+      ][0];
+    }
+
+    const hasAssetAvatar =
+      Boolean(
+        root.querySelector(
+          ".mantine-Avatar-root, .mantine-Avatar-image"
+        )
+      );
+
+    const hasNativeTransactionIcon =
+      Boolean(
+        root.querySelector(
+          ".styles_txIconCircle__KavT9"
+        )
+      );
+
+    if (
+      hasAssetAvatar &&
+      !hasNativeTransactionIcon
+    ) {
+      return "accounts";
+    }
+
+    if (
+      hasNativeTransactionIcon &&
+      !hasAssetAvatar
+    ) {
+      return "transactions";
+    }
+
+    const pathname =
+      location.pathname
+        .toLowerCase();
+
+    if (
+      rootCount === 1 &&
+      pathname.includes(
+        "transaction"
+      )
+    ) {
+      return "transactions";
+    }
+
+    if (rootCount > 1) {
+      return rootIndex === 0
+        ? "accounts"
+        : "transactions";
+    }
+
+    return "accounts";
+  }
+
   function transactionAppliesToRoot(
     transaction,
-    rootHistoryNames
+    historyVariant
   ) {
     const target =
       normalizeHistoryTarget(
@@ -782,7 +1079,7 @@
 
     return (
       target === "both" ||
-      rootHistoryNames.has(target)
+      target === historyVariant
     );
   }
 
@@ -813,128 +1110,155 @@
 
   function buildHistorySignature(
     transactions,
-    historyNames
+    historyVariant
   ) {
     return JSON.stringify({
-      historyNames: [
-        ...historyNames
-      ].sort(),
+      historyVariant,
       transactions
     });
   }
 
   function upsertTransactions(config) {
-    const roots =
+    const rootsMap =
       collectHistoryRoots(config);
 
-    if (roots.size === 0) {
+    if (rootsMap.size === 0) {
       return;
     }
 
-    for (
-      const [
-        root,
-        historyNames
-      ] of roots.entries()
-    ) {
-      const transactions =
-        config.transactions.filter(
-          (transaction) =>
-            transactionAppliesToRoot(
-              transaction,
-              historyNames
-            )
-        );
+    const roots = [
+      ...rootsMap.entries()
+    ];
 
-      const signature =
-        buildHistorySignature(
-          transactions,
+    roots.forEach(
+      (
+        [
+          root,
           historyNames
+        ],
+        rootIndex
+      ) => {
+        const historyVariant =
+          inferHistoryVariant(
+            root,
+            historyNames,
+            rootIndex,
+            roots.length
+          );
+
+        const transactions =
+          config.transactions.filter(
+            (transaction) =>
+              transactionAppliesToRoot(
+                transaction,
+                historyVariant
+              )
+          );
+
+        const signature =
+          buildHistorySignature(
+            transactions,
+            historyVariant
+          );
+
+        const existingSignature =
+          root.getAttribute(
+            "data-remote-demo-three-history-signature"
+          );
+
+        const hasCurrentGroups =
+          root.querySelector(
+            `[${DAY_GROUP_ATTRIBUTE}]`
+          );
+
+        if (
+          existingSignature === signature &&
+          (
+            transactions.length === 0 ||
+            hasCurrentGroups
+          )
+        ) {
+          return;
+        }
+
+        removeInjectedTransactions(root);
+
+        if (
+          transactions.length === 0
+        ) {
+          root.setAttribute(
+            "data-remote-demo-three-history-signature",
+            signature
+          );
+
+          return;
+        }
+
+        const fragment =
+          document.createDocumentFragment();
+
+        if (
+          historyVariant ===
+          "accounts"
+        ) {
+          fragment.appendChild(
+            createAccountsHistoryBlock(
+              transactions,
+              config
+            )
+          );
+        } else {
+          const groups = new Map();
+
+          for (
+            const transaction of
+            transactions
+          ) {
+            if (
+              !groups.has(
+                transaction.dateGroup
+              )
+            ) {
+              groups.set(
+                transaction.dateGroup,
+                []
+              );
+            }
+
+            groups
+              .get(
+                transaction.dateGroup
+              )
+              .push(transaction);
+          }
+
+          for (
+            const [
+              dateGroup,
+              groupedTransactions
+            ] of groups.entries()
+          ) {
+            fragment.appendChild(
+              createTransactionsDayGroup(
+                dateGroup,
+                groupedTransactions,
+                config
+              )
+            );
+          }
+        }
+
+        root.insertBefore(
+          fragment,
+          root.firstChild
         );
 
-      const existingSignature =
-        root.getAttribute(
-          "data-remote-demo-three-history-signature"
-        );
-
-      const hasCurrentGroups =
-        root.querySelector(
-          `[${DAY_GROUP_ATTRIBUTE}]`
-        );
-
-      if (
-        existingSignature === signature &&
-        (
-          transactions.length === 0 ||
-          hasCurrentGroups
-        )
-      ) {
-        continue;
-      }
-
-      removeInjectedTransactions(root);
-
-      if (
-        transactions.length === 0
-      ) {
         root.setAttribute(
           "data-remote-demo-three-history-signature",
           signature
         );
-
-        continue;
       }
-
-      const groups = new Map();
-
-      for (
-        const transaction of
-        transactions
-      ) {
-        if (
-          !groups.has(
-            transaction.dateGroup
-          )
-        ) {
-          groups.set(
-            transaction.dateGroup,
-            []
-          );
-        }
-
-        groups
-          .get(transaction.dateGroup)
-          .push(transaction);
-      }
-
-      const fragment =
-        document.createDocumentFragment();
-
-      for (
-        const [
-          dateGroup,
-          groupedTransactions
-        ] of groups.entries()
-      ) {
-        fragment.appendChild(
-          createDayGroup(
-            dateGroup,
-            groupedTransactions,
-            config
-          )
-        );
-      }
-
-      root.insertBefore(
-        fragment,
-        root.firstChild
-      );
-
-      root.setAttribute(
-        "data-remote-demo-three-history-signature",
-        signature
-      );
-    }
+    );
   }
 
   function addDetailRow(
@@ -1234,7 +1558,11 @@
       makeElement(
         "p",
         {
-          text: config.tokenSymbol,
+          text:
+            getAssetSymbol(
+              transaction,
+              config
+            ),
           style: {
             margin: "0",
             color:
