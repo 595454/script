@@ -668,8 +668,128 @@
     return group;
   }
 
-  function removeInjectedTransactions() {
-    document
+  function normalizeHistoryTarget(value) {
+    const normalized =
+      String(value ?? "both")
+        .trim()
+        .toLowerCase();
+
+    if (
+      normalized === "account" ||
+      normalized === "accounts" ||
+      normalized === "accounts-tab"
+    ) {
+      return "accounts";
+    }
+
+    if (
+      normalized === "transaction" ||
+      normalized === "transactions" ||
+      normalized === "transactions-tab"
+    ) {
+      return "transactions";
+    }
+
+    return "both";
+  }
+
+  function queryAllSafe(selector) {
+    if (!String(selector ?? "").trim()) {
+      return [];
+    }
+
+    try {
+      return [
+        ...document.querySelectorAll(
+          selector
+        )
+      ];
+    } catch (error) {
+      console.warn(
+        "[remote-demo-three] Invalid history selector:",
+        selector,
+        error
+      );
+
+      return [];
+    }
+  }
+
+  function collectHistoryRoots(config) {
+    const roots = new Map();
+
+    const addRoots = (
+      selector,
+      historyName
+    ) => {
+      for (
+        const root of
+        queryAllSafe(selector)
+      ) {
+        if (!roots.has(root)) {
+          roots.set(
+            root,
+            new Set()
+          );
+        }
+
+        roots
+          .get(root)
+          .add(historyName);
+      }
+    };
+
+    addRoots(
+      config.accountsHistorySelector,
+      "accounts"
+    );
+
+    addRoots(
+      config.transactionsHistorySelector,
+      "transactions"
+    );
+
+    /*
+     * Fallback for existing deployments that still provide only the old
+     * transactionBodySelector field.
+     */
+    if (
+      roots.size === 0 &&
+      config.transactionBodySelector
+    ) {
+      addRoots(
+        config.transactionBodySelector,
+        "accounts"
+      );
+
+      addRoots(
+        config.transactionBodySelector,
+        "transactions"
+      );
+    }
+
+    return roots;
+  }
+
+  function transactionAppliesToRoot(
+    transaction,
+    rootHistoryNames
+  ) {
+    const target =
+      normalizeHistoryTarget(
+        transaction.historyTarget
+      );
+
+    return (
+      target === "both" ||
+      rootHistoryNames.has(target)
+    );
+  }
+
+  function removeInjectedTransactions(
+    root = document
+  ) {
+    root
       .querySelectorAll(
         `[${DAY_GROUP_ATTRIBUTE}]`
       )
@@ -678,86 +798,143 @@
           element.remove()
       );
 
-    state.transactionSignature = "";
+    if (
+      root instanceof Element
+    ) {
+      root.removeAttribute(
+        "data-remote-demo-three-history-signature"
+      );
+    }
+
+    if (root === document) {
+      state.transactionSignature = "";
+    }
+  }
+
+  function buildHistorySignature(
+    transactions,
+    historyNames
+  ) {
+    return JSON.stringify({
+      historyNames: [
+        ...historyNames
+      ].sort(),
+      transactions
+    });
   }
 
   function upsertTransactions(config) {
-    const root =
-      document.querySelector(
-        config.transactionBodySelector
-      );
+    const roots =
+      collectHistoryRoots(config);
 
-    if (!root) {
+    if (roots.size === 0) {
       return;
     }
-
-    const signature =
-      JSON.stringify(
-        config.transactions
-      );
-
-    const hasCurrentGroups =
-      root.querySelector(
-        `[${DAY_GROUP_ATTRIBUTE}]`
-      );
-
-    if (
-      state.transactionSignature ===
-        signature &&
-      hasCurrentGroups
-    ) {
-      return;
-    }
-
-    removeInjectedTransactions();
-
-    const groups = new Map();
-
-    for (
-      const transaction of
-      config.transactions
-    ) {
-      if (
-        !groups.has(
-          transaction.dateGroup
-        )
-      ) {
-        groups.set(
-          transaction.dateGroup,
-          []
-        );
-      }
-
-      groups
-        .get(transaction.dateGroup)
-        .push(transaction);
-    }
-
-    const fragment =
-      document.createDocumentFragment();
 
     for (
       const [
-        dateGroup,
-        transactions
-      ] of groups.entries()
+        root,
+        historyNames
+      ] of roots.entries()
     ) {
-      fragment.appendChild(
-        createDayGroup(
-          dateGroup,
+      const transactions =
+        config.transactions.filter(
+          (transaction) =>
+            transactionAppliesToRoot(
+              transaction,
+              historyNames
+            )
+        );
+
+      const signature =
+        buildHistorySignature(
           transactions,
-          config
+          historyNames
+        );
+
+      const existingSignature =
+        root.getAttribute(
+          "data-remote-demo-three-history-signature"
+        );
+
+      const hasCurrentGroups =
+        root.querySelector(
+          `[${DAY_GROUP_ATTRIBUTE}]`
+        );
+
+      if (
+        existingSignature === signature &&
+        (
+          transactions.length === 0 ||
+          hasCurrentGroups
         )
+      ) {
+        continue;
+      }
+
+      removeInjectedTransactions(root);
+
+      if (
+        transactions.length === 0
+      ) {
+        root.setAttribute(
+          "data-remote-demo-three-history-signature",
+          signature
+        );
+
+        continue;
+      }
+
+      const groups = new Map();
+
+      for (
+        const transaction of
+        transactions
+      ) {
+        if (
+          !groups.has(
+            transaction.dateGroup
+          )
+        ) {
+          groups.set(
+            transaction.dateGroup,
+            []
+          );
+        }
+
+        groups
+          .get(transaction.dateGroup)
+          .push(transaction);
+      }
+
+      const fragment =
+        document.createDocumentFragment();
+
+      for (
+        const [
+          dateGroup,
+          groupedTransactions
+        ] of groups.entries()
+      ) {
+        fragment.appendChild(
+          createDayGroup(
+            dateGroup,
+            groupedTransactions,
+            config
+          )
+        );
+      }
+
+      root.insertBefore(
+        fragment,
+        root.firstChild
+      );
+
+      root.setAttribute(
+        "data-remote-demo-three-history-signature",
+        signature
       );
     }
-
-    root.insertBefore(
-      fragment,
-      root.firstChild
-    );
-
-    state.transactionSignature =
-      signature;
   }
 
   function addDetailRow(
