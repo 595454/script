@@ -37,7 +37,7 @@
   }
 
   const SCRIPT_VERSION =
-    "1.5.2";
+    "1.5.4";
 
   const ROOT_MARKER_SELECTOR =
     "#cdc-web-body";
@@ -562,6 +562,47 @@
     return container;
   }
 
+  function getNativeSelectedBackground() {
+    const selectedNativeRow =
+      document.querySelector(
+        '[data-testid="hub__transactionHistory__row"].styles_backgroundSelected__Q4_Xl:not([data-remote-demo-three-injected-row="true"])'
+      );
+
+    if (!selectedNativeRow) {
+      return "";
+    }
+
+    return getComputedStyle(
+      selectedNativeRow
+    ).backgroundColor || "";
+  }
+
+  function clearAllTransactionRowSelection() {
+    document
+      .querySelectorAll(
+        '[data-testid="hub__transactionHistory__row"]'
+      )
+      .forEach((row) => {
+        row.classList.remove(
+          "styles_backgroundSelected__Q4_Xl"
+        );
+
+        row.removeAttribute(
+          "aria-selected"
+        );
+
+        if (
+          row.hasAttribute(
+            "data-remote-demo-three-injected-row"
+          )
+        ) {
+          row.style.removeProperty(
+            "background-color"
+          );
+        }
+      });
+  }
+
   function clearInjectedRowSelection() {
     document
       .querySelectorAll(
@@ -575,13 +616,20 @@
         row.removeAttribute(
           "aria-selected"
         );
+
+        row.style.removeProperty(
+          "background-color"
+        );
       });
   }
 
   function selectInjectedTransactionRow(
     row
   ) {
-    clearInjectedRowSelection();
+    const nativeBackground =
+      getNativeSelectedBackground();
+
+    clearAllTransactionRowSelection();
 
     row.classList.add(
       "styles_backgroundSelected__Q4_Xl"
@@ -591,6 +639,25 @@
       "aria-selected",
       "true"
     );
+
+    /*
+     * Some saved MHTML pages preserve the class name but not the full
+     * CSS-module rule. Use the currently selected native row's computed
+     * background as a visual fallback.
+     */
+    if (
+      nativeBackground &&
+      nativeBackground !==
+        "rgba(0, 0, 0, 0)" &&
+      nativeBackground !==
+        "transparent"
+    ) {
+      row.style.setProperty(
+        "background-color",
+        nativeBackground,
+        "important"
+      );
+    }
   }
 
   function createTransactionRow(
@@ -664,7 +731,9 @@
       "div",
       {
         className:
-          "styles_transactionGroup__QWgo3 m_4081bf90 mantine-Group-root",
+          isAccounts
+            ? "m_4081bf90 mantine-Group-root"
+            : "styles_transactionGroup__QWgo3 m_4081bf90 mantine-Group-root",
         style: {
           "--group-gap":
             "calc(0.5rem * var(--mantine-scale))",
@@ -676,10 +745,40 @@
             "wrap",
           minWidth: "0",
           marginInline: "0",
-          paddingInline: "0"
+          paddingInline: "0",
+          columnGap:
+            "calc(0.5rem * var(--mantine-scale))",
+          gap:
+            "calc(0.5rem * var(--mantine-scale))"
         }
       }
     );
+
+    if (isAccounts) {
+      left.style.setProperty(
+        "gap",
+        "calc(0.5rem * var(--mantine-scale))",
+        "important"
+      );
+
+      left.style.setProperty(
+        "column-gap",
+        "calc(0.5rem * var(--mantine-scale))",
+        "important"
+      );
+
+      left.style.setProperty(
+        "padding-inline-start",
+        "0",
+        "important"
+      );
+
+      left.style.setProperty(
+        "margin-inline-start",
+        "0",
+        "important"
+      );
+    }
 
     if (isAccounts) {
       left.appendChild(
@@ -2442,6 +2541,7 @@
         "data-remote-demo-three-injected-row"
       )
     ) {
+      clearInjectedRowSelection();
       closeTransactionDetails();
     }
   }
