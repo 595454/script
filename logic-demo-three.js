@@ -392,10 +392,10 @@
               src: logoUrl
             },
             style: {
-              width: "24px",
-              height: "24px",
-              maxWidth: "24px",
-              maxHeight: "24px",
+              width: "32px",
+              height: "32px",
+              maxWidth: "32px",
+              maxHeight: "32px",
               objectFit: "contain",
               display: "block"
             }
@@ -410,8 +410,8 @@
             text:
               symbol.slice(0, 2),
             style: {
-              width: "24px",
-              height: "24px",
+              width: "32px",
+              height: "32px",
               borderRadius: "50%",
               display: "grid",
               placeItems: "center",
