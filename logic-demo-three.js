@@ -37,7 +37,7 @@
   }
 
   const SCRIPT_VERSION =
-    "1.5.5";
+    "1.5.6";
 
   const ROOT_MARKER_SELECTOR =
     "#cdc-web-body";
@@ -370,9 +370,80 @@
     ).trim();
   }
 
+  function getNativeTransactionRowMetrics() {
+    const nativeRow = [
+      ...document.querySelectorAll(
+        '[data-testid="hub__transactionHistory__row"]'
+      )
+    ].find(
+      (row) =>
+        !row.hasAttribute(
+          "data-remote-demo-three-injected-row"
+        )
+    );
+
+    if (!nativeRow) {
+      return {
+        iconSize: 32,
+        titleGap: 8
+      };
+    }
+
+    const group =
+      nativeRow.querySelector(
+        '[class*="styles_transactionGroup__"]'
+      ) ||
+      nativeRow.querySelector(
+        ".mantine-Group-root"
+      );
+
+    const icon =
+      group?.children?.[0];
+
+    const information =
+      group?.children?.[1];
+
+    const iconRect =
+      icon?.getBoundingClientRect();
+
+    const informationRect =
+      information?.getBoundingClientRect();
+
+    const measuredIconSize =
+      Math.round(
+        Math.max(
+          iconRect?.width || 0,
+          iconRect?.height || 0
+        )
+      );
+
+    const measuredGap =
+      iconRect &&
+      informationRect
+        ? Math.round(
+            informationRect.left -
+            iconRect.right
+          )
+        : 0;
+
+    return {
+      iconSize:
+        measuredIconSize >= 20 &&
+        measuredIconSize <= 48
+          ? measuredIconSize
+          : 32,
+      titleGap:
+        measuredGap >= 0 &&
+        measuredGap <= 32
+          ? measuredGap
+          : 8
+    };
+  }
+
   function createAccountAssetLogo(
     transaction,
-    config
+    config,
+    iconSize = 32
   ) {
     const symbol =
       getAssetSymbol(
@@ -388,11 +459,26 @@
             "m_f85678b6 mantine-Avatar-root",
           style: {
             "--avatar-size":
-              "calc(2rem * var(--mantine-scale))",
+              `${iconSize}px`,
             "--avatar-radius":
-              "var(--mantine-radius-xs)",
-            overflow: "hidden",
-            flex: "0 0 auto"
+              "9999px",
+            width:
+              `${iconSize}px`,
+            height:
+              `${iconSize}px`,
+            minWidth:
+              `${iconSize}px`,
+            minHeight:
+              `${iconSize}px`,
+            maxWidth:
+              `${iconSize}px`,
+            maxHeight:
+              `${iconSize}px`,
+            overflow: "visible",
+            flex: `0 0 ${iconSize}px`,
+            borderRadius: "50%",
+            background: "transparent",
+            boxSizing: "border-box"
           }
         }
       );
@@ -414,10 +500,10 @@
               src: logoUrl
             },
             style: {
-              width: "32px",
-              height: "32px",
-              maxWidth: "32px",
-              maxHeight: "32px",
+              width: `${iconSize}px`,
+              height: `${iconSize}px`,
+              maxWidth: `${iconSize}px`,
+              maxHeight: `${iconSize}px`,
               objectFit: "contain",
               display: "block"
             }
@@ -430,27 +516,33 @@
        */
       image.style.setProperty(
         "width",
-        "32px",
+        `${iconSize}px`,
         "important"
       );
       image.style.setProperty(
         "height",
-        "32px",
+        `${iconSize}px`,
         "important"
       );
       image.style.setProperty(
         "max-width",
-        "32px",
+        `${iconSize}px`,
         "important"
       );
       image.style.setProperty(
         "max-height",
-        "32px",
+        `${iconSize}px`,
         "important"
       );
       image.style.setProperty(
         "object-fit",
         "contain",
+        "important"
+      );
+
+      avatar.style.setProperty(
+        "overflow",
+        "visible",
         "important"
       );
 
@@ -668,6 +760,14 @@
     const isAccounts =
       historyVariant === "accounts";
 
+    const nativeMetrics =
+      isAccounts
+        ? getNativeTransactionRowMetrics()
+        : {
+            iconSize: 32,
+            titleGap: 8
+          };
+
     const rowAttributes = {
       "data-testid":
         "hub__transactionHistory__row",
@@ -747,9 +847,13 @@
           marginInline: "0",
           paddingInline: "0",
           columnGap:
-            "calc(0.5rem * var(--mantine-scale))",
+            isAccounts
+              ? `${nativeMetrics.titleGap}px`
+              : "calc(0.5rem * var(--mantine-scale))",
           gap:
-            "calc(0.5rem * var(--mantine-scale))"
+            isAccounts
+              ? `${nativeMetrics.titleGap}px`
+              : "calc(0.5rem * var(--mantine-scale))"
         }
       }
     );
@@ -757,13 +861,13 @@
     if (isAccounts) {
       left.style.setProperty(
         "gap",
-        "calc(0.5rem * var(--mantine-scale))",
+        `${nativeMetrics.titleGap}px`,
         "important"
       );
 
       left.style.setProperty(
         "column-gap",
-        "calc(0.5rem * var(--mantine-scale))",
+        `${nativeMetrics.titleGap}px`,
         "important"
       );
 
@@ -784,7 +888,8 @@
       left.appendChild(
         createAccountAssetLogo(
           transaction,
-          config
+          config,
+          nativeMetrics.iconSize
         )
       );
     } else {
@@ -979,10 +1084,6 @@
 
     if (!isAccounts) {
       const openDetails = () => {
-        selectInjectedTransactionRow(
-          row
-        );
-
         showTransactionDetails(
           transaction,
           config,
@@ -2480,6 +2581,15 @@
     clickedRow
   ) {
     closeTransactionDetails();
+
+    /*
+     * Select after cleanup. Cleanup removes the previous injected/native
+     * visual state, so selecting before it would immediately undo the
+     * highlight.
+     */
+    selectInjectedTransactionRow(
+      clickedRow
+    );
 
     const nativeDetailColumn =
       findNativeDetailColumn();
