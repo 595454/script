@@ -37,7 +37,7 @@
   }
 
   const SCRIPT_VERSION =
-    "1.5.0";
+    "1.5.1";
 
   const ROOT_MARKER_SELECTOR =
     "#cdc-web-body";
@@ -570,6 +570,37 @@
     return container;
   }
 
+  function clearInjectedRowSelection() {
+    document
+      .querySelectorAll(
+        '[data-remote-demo-three-injected-row="true"]'
+      )
+      .forEach((row) => {
+        row.classList.remove(
+          "styles_backgroundSelected__Q4_Xl"
+        );
+
+        row.removeAttribute(
+          "aria-selected"
+        );
+      });
+  }
+
+  function selectInjectedTransactionRow(
+    row
+  ) {
+    clearInjectedRowSelection();
+
+    row.classList.add(
+      "styles_backgroundSelected__Q4_Xl"
+    );
+
+    row.setAttribute(
+      "aria-selected",
+      "true"
+    );
+  }
+
   function createTransactionRow(
     transaction,
     config,
@@ -837,6 +868,10 @@
 
     if (!isAccounts) {
       const openDetails = () => {
+        selectInjectedTransactionRow(
+          row
+        );
+
         showTransactionDetails(
           transaction,
           config,
@@ -1391,20 +1426,30 @@
     }
 
     const row =
-      makeElement("tr");
+      makeElement(
+        "tr",
+        {
+          className:
+            "m_4e7aa4fd mantine-Table-tr"
+        }
+      );
 
     const labelCell =
       makeElement(
         "td",
         {
+          className:
+            "m_4e7aa4ef mantine-Table-td",
           style: {
             width: "35%",
+            minWidth: "35%",
+            maxWidth: "35%",
             padding:
               "12px 12px 12px 0",
             verticalAlign: "top",
-            color:
-              "var(--content-secondary, #868e96)",
-            whiteSpace: "nowrap"
+            lineBreak: "normal",
+            whiteSpace: "nowrap",
+            boxSizing: "border-box"
           }
         }
       );
@@ -1413,9 +1458,16 @@
       makeElement(
         "p",
         {
+          className:
+            "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant": "body1"
+          },
           text: label,
           style: {
-            margin: "0"
+            margin: "0",
+            color:
+              "var(--content-secondary)"
           }
         }
       )
@@ -1425,11 +1477,19 @@
       makeElement(
         "td",
         {
+          className:
+            "m_4e7aa4ef mantine-Table-td",
           style: {
+            width: "65%",
+            minWidth: "65%",
+            maxWidth: "65%",
             padding:
               "12px 0 12px 12px",
+            verticalAlign: "top",
             textAlign: "end",
-            wordBreak: "break-word"
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
+            boxSizing: "border-box"
           }
         }
       );
@@ -1438,9 +1498,26 @@
       makeElement(
         "p",
         {
+          className:
+            "mantine-focus-auto Text_root__Zab6T m_b6d8b162 mantine-Text-root",
+          attributes: {
+            "data-variant": "body1"
+          },
           text: value,
           style: {
             margin: "0",
+            width: "100%",
+            maxWidth: "100%",
+            textAlign: "end",
+            wordBreak:
+              String(label)
+                .toLowerCase()
+                .includes("from") ||
+              String(label)
+                .toLowerCase()
+                .includes("to")
+                ? "break-all"
+                : "break-word",
             overflowWrap: "anywhere"
           }
         }
@@ -1451,6 +1528,7 @@
     row.appendChild(valueCell);
     tbody.appendChild(row);
   }
+
 
   function findNativeDetailColumn() {
     const nativeContainer = [
@@ -1540,6 +1618,7 @@
       ?.remove();
 
     restoreHiddenNativeDetailColumn();
+    clearInjectedRowSelection();
   }
 
   function createReplicatedDetailContent(
@@ -1822,7 +1901,8 @@
               "0rem",
             "--table-vertical-spacing":
               "calc(0.75rem * var(--mantine-scale))",
-            width: "100%"
+            width: "100%",
+            tableLayout: "fixed"
           }
         }
       );
@@ -1863,7 +1943,10 @@
         "th",
         {
           className:
-            "m_4e7aa4f3 mantine-Table-th"
+            "m_4e7aa4f3 mantine-Table-th",
+          style: {
+            width: "65%"
+          }
         }
       )
     );
@@ -1957,6 +2040,13 @@
       return;
     }
 
+    const nativeDetailWidth =
+      nativeDetailColumn
+        ? nativeDetailColumn
+            .getBoundingClientRect()
+            .width
+        : 0;
+
     if (nativeDetailColumn) {
       nativeDetailColumn.setAttribute(
         "data-remote-demo-three-hidden-native-detail",
@@ -2026,6 +2116,43 @@
 
     sideColumn.style.display =
       "block";
+
+    if (nativeDetailWidth > 0) {
+      const width =
+        `${Math.round(
+          nativeDetailWidth
+        )}px`;
+
+      sideColumn.style.setProperty(
+        "flex",
+        `0 0 ${width}`,
+        "important"
+      );
+
+      sideColumn.style.setProperty(
+        "width",
+        width,
+        "important"
+      );
+
+      sideColumn.style.setProperty(
+        "min-width",
+        width,
+        "important"
+      );
+
+      sideColumn.style.setProperty(
+        "max-width",
+        width,
+        "important"
+      );
+    } else {
+      sideColumn.style.setProperty(
+        "min-width",
+        "300px",
+        "important"
+      );
+    }
 
     sideColumn.appendChild(
       createReplicatedDetailContent(
