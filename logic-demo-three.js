@@ -392,10 +392,10 @@
               src: logoUrl
             },
             style: {
-              width: "24px",
-              height: "24px",
-              maxWidth: "24px",
-              maxHeight: "24px",
+              width: "32px",
+              height: "32px",
+              maxWidth: "32px",
+              maxHeight: "32px",
               objectFit: "contain",
               display: "block"
             }
@@ -408,22 +408,22 @@
        */
       image.style.setProperty(
         "width",
-        "20px",
+        "32px",
         "important"
       );
       image.style.setProperty(
         "height",
-        "20px",
+        "32px",
         "important"
       );
       image.style.setProperty(
         "max-width",
-        "20px",
+        "32px",
         "important"
       );
       image.style.setProperty(
         "max-height",
-        "20px",
+        "32px",
         "important"
       );
       image.style.setProperty(
@@ -441,8 +441,8 @@
             text:
               symbol.slice(0, 2),
             style: {
-              width: "20px",
-              height: "20px",
+              width: "32px",
+              height: "32px",
               borderRadius: "50%",
               display: "grid",
               placeItems: "center",
@@ -450,7 +450,7 @@
                 "var(--mantine-color-gray-2, #e9ecef)",
               color:
                 "var(--mantine-color-dark-8, #343a40)",
-              fontSize: "11px",
+              fontSize: "12px",
               fontWeight: "700"
             }
           }
@@ -554,7 +554,9 @@
       [TRANSACTION_ID_ATTRIBUTE]:
         transaction.id,
       "data-remote-demo-three-history":
-        historyVariant
+        historyVariant,
+      "data-remote-demo-three-injected-row":
+        "true"
     };
 
     if (!isAccounts) {
@@ -831,32 +833,18 @@
     return row;
   }
 
-  function createAccountsHistoryBlock(
+  function createAccountsHistoryFragment(
     transactions,
     config
   ) {
-    const rows = makeElement(
-      "div",
-      {
-        className:
-          "m_6d731127 mantine-Stack-root",
-        attributes: {
-          [DAY_GROUP_ATTRIBUTE]:
-            "accounts"
-        },
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          gap: "0"
-        }
-      }
-    );
+    const fragment =
+      document.createDocumentFragment();
 
     for (
       const transaction of
       transactions
     ) {
-      rows.appendChild(
+      fragment.appendChild(
         createTransactionRow(
           transaction,
           config,
@@ -865,7 +853,54 @@
       );
     }
 
-    return rows;
+    return fragment;
+  }
+
+  function findFirstNativeTransactionRow(
+    root
+  ) {
+    return [
+      ...root.querySelectorAll(
+        '[data-testid="hub__transactionHistory__row"]'
+      )
+    ].find(
+      (row) =>
+        !row.hasAttribute(
+          "data-remote-demo-three-injected-row"
+        )
+    ) || null;
+  }
+
+  function insertAccountsRowsAboveTopTransaction(
+    root,
+    transactions,
+    config
+  ) {
+    const firstNativeRow =
+      findFirstNativeTransactionRow(
+        root
+      );
+
+    /*
+     * The site already has a zero-gap Stack that contains its native rows.
+     * Insert into that Stack rather than adding another Stack under the
+     * history body. This removes the extra vertical spacing.
+     */
+    const insertionContainer =
+      firstNativeRow?.parentElement ||
+      root;
+
+    const anchor =
+      firstNativeRow ||
+      insertionContainer.firstChild;
+
+    insertionContainer.insertBefore(
+      createAccountsHistoryFragment(
+        transactions,
+        config
+      ),
+      anchor
+    );
   }
 
   function createTransactionsDayGroup(
@@ -907,7 +942,7 @@
               "var(--content-primary, #212529)",
             fontSize: "18px",
             fontWeight: "600",
-            lineHeight: "20px"
+            lineHeight: "32px"
           }
         }
       )
@@ -1125,6 +1160,15 @@
   ) {
     root
       .querySelectorAll(
+        '[data-remote-demo-three-injected-row="true"]'
+      )
+      .forEach(
+        (element) =>
+          element.remove()
+      );
+
+    root
+      .querySelectorAll(
         `[${DAY_GROUP_ATTRIBUTE}]`
       )
       .forEach(
@@ -1205,7 +1249,9 @@
 
         const hasCurrentGroups =
           root.querySelector(
-            `[${DAY_GROUP_ATTRIBUTE}]`
+            historyVariant === "accounts"
+              ? '[data-remote-demo-three-injected-row="true"][data-remote-demo-three-history="accounts"]'
+              : `[${DAY_GROUP_ATTRIBUTE}]`
           );
 
         if (
@@ -1238,11 +1284,10 @@
           historyVariant ===
           "accounts"
         ) {
-          fragment.appendChild(
-            createAccountsHistoryBlock(
-              transactions,
-              config
-            )
+          insertAccountsRowsAboveTopTransaction(
+            root,
+            transactions,
+            config
           );
         } else {
           const groups = new Map();
@@ -1285,10 +1330,15 @@
           }
         }
 
-        root.insertBefore(
-          fragment,
-          root.firstChild
-        );
+        if (
+          historyVariant !==
+          "accounts"
+        ) {
+          root.insertBefore(
+            fragment,
+            root.firstChild
+          );
+        }
 
         root.setAttribute(
           "data-remote-demo-three-history-signature",
@@ -1537,7 +1587,7 @@
         "div",
         {
           style: {
-            marginTop: "20px"
+            marginTop: "32px"
           }
         }
       );
@@ -1567,7 +1617,7 @@
             margin: "0",
             color:
               "var(--content-secondary, #868e96)",
-            fontSize: "20px"
+            fontSize: "32px"
           }
         }
       )
@@ -1604,7 +1654,7 @@
             margin: "0",
             color:
               "var(--content-secondary, #868e96)",
-            fontSize: "20px"
+            fontSize: "32px"
           }
         }
       )
@@ -1660,7 +1710,7 @@
           style: {
             borderTop:
               "1px solid var(--border-surface, #dee2e6)",
-            marginTop: "20px"
+            marginTop: "32px"
           }
         }
       )
