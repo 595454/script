@@ -392,10 +392,10 @@
               src: logoUrl
             },
             style: {
-              width: "20px",
-              height: "20px",
-              maxWidth: "20px",
-              maxHeight: "20px",
+              width: "24px",
+              height: "24px",
+              maxWidth: "24px",
+              maxHeight: "24px",
               objectFit: "contain",
               display: "block"
             }
